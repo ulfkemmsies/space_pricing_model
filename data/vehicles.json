@@ -1,0 +1,30 @@
+{
+    "Space Tug":{
+        "gross_sens": 0.03, 
+        "prop_sens": 0.01, 
+        "Isp":465,
+        "aerobraking": false
+    },
+
+    "Lunar Lander":{
+        "gross_sens": 0.03, 
+        "prop_sens": 0.01, 
+        "Isp":465,
+        "aerobraking": false
+    },
+
+    "Aerobraker":{
+        "gross_sens": 0.03, 
+        "prop_sens": 0.01, 
+        "Isp":465,
+        "aerobraking": true
+    },
+
+    "Lunar Aerobraker":{
+        "gross_sens": 0.03, 
+        "prop_sens": 0.01, 
+        "Isp":465,
+        "aerobraking": true
+    }
+
+}

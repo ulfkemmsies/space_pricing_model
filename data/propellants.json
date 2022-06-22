@@ -1,0 +1,12 @@
+{
+    "Hydrolox": {
+        "name": "Hydrolox",
+        "fuel": "Liquid Hydrogen",
+        "oxidizer": "Liquid Oxygen",
+        "fuel_density": 71, 
+        "oxidizer_density": 1142,
+        "f_fueltank": 9,
+        "f_oxtank": 12,
+        "f_ullage": 0.03 
+    }
+}

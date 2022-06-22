@@ -1,0 +1,13 @@
+{
+    "aerobraking_mass_penalty": 1.15,
+    "g0": 9.807,
+    "fuel_sources": ["LEO", "Moon"],
+    "active_nodes": ["Moon", "LLO", "EML1", "LEO"],
+    "all_nodes": ["Moon", "LLO", "EML1", "EML2", "EML4/5", "GEO", "LEO", "NEOs", "Earth"],
+    "earth_to_LEO_cost": 2000,
+    "local_fuel_prices": {
+        "Moon":5000,
+        "LEO":2000,
+        "Earth": 1
+    }
+}
