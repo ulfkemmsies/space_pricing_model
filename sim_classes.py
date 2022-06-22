@@ -499,7 +499,7 @@ class Price_Sim:
                         "vehicles",
                         "trajectory_data"]:
             setattr(self, var_name, {})
-            self.update_attr_from_json(var_name, subfolder_path +"\\"+ var_name)
+            self.update_attr_from_json(var_name, subfolder_path +"/"+ var_name)
 
     def save_attribute_to_json(self, attribute):
         if not type(getattr(self, attribute)) == dict:
