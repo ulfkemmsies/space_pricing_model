@@ -1,4 +1,3 @@
-import statistics
 import streamlit as st
 
 # Custom imports 

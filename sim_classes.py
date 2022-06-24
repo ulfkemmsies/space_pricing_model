@@ -457,16 +457,12 @@ class Graph:
                     data['cheaper_source'] = f"{fuel_source}"
                     data['color'] = color_palette[f'{fuel_source}']
 
-        st.write([(node, merged_graph.nodes[node]) for node in merged_graph.nodes if "cheaper_source" not in merged_graph.nodes[node].keys()])    
+        # st.write([(node, merged_graph.nodes[node]) for node in merged_graph.nodes if "cheaper_source" not in merged_graph.nodes[node].keys()])    
 
         for u, v, data in merged_graph.edges(data=True):
             data["color"] = color_palette[data['fuel_source']]
 
         return merged_graph
-
-
-            
-
 
 
 
@@ -484,22 +480,9 @@ class Price_Sim:
     def __init__(self):
 
         """Initialize instance with X,Y,Z.
-            Args:
-                """
+            Args:"""
         
-        #Create all the dicts that will hold our info and update them from disk
-        subfolder_path = get_subfolder_path("data")
-
-        for var_name in ["global_var_distros",
-                        "local_var_distros",
-                        "global_vars",
-                        "events",
-                        "propellants",
-                        "engines",
-                        "vehicles",
-                        "trajectory_data"]:
-            setattr(self, var_name, {})
-            self.update_attr_from_json(var_name, subfolder_path +"/"+ var_name)
+        self.update_attrs_from_disk()
 
     def save_attribute_to_json(self, attribute):
         if not type(getattr(self, attribute)) == dict:
@@ -514,15 +497,38 @@ class Price_Sim:
         dict_new = load_dict_from_json(filename)
         getattr(self, attribute).update(dict_new)
 
+    def update_attrs_from_disk(self, attribute_list=None):
+
+        #Create all the dicts that will hold our info and update them from disk
+        subfolder_path = get_subfolder_path("data")
+        
+        if attribute_list == None:
+
+            for var_name in ["global_var_distros",
+                            "local_var_distros",
+                            "global_vars",
+                            "events",
+                            "propellants",
+                            "engines",
+                            "vehicles",
+                            "trajectory_data"]:
+                setattr(self, var_name, {})
+                self.update_attr_from_json(var_name, subfolder_path +"/"+ var_name)
+        
+        else:
+
+            for var_name in attribute_list:
+                setattr(self, var_name, {})
+                self.update_attr_from_json(var_name, subfolder_path +"/"+ var_name)
+
     def graph_drawer(self, old_graph=None, dict_of_dicts=None):
 
         #notice changes in nodes, trajectory data (thus vehicles), aerobraking constant
         if old_graph != None:
             nodes_changed = old_graph.g_main.nodes.keys() != self.global_vars["active_nodes"]
             trajectory_data_changed = old_graph.trajectory_data != dict_of_dicts
-            aerobraking_changed = old_graph.aerobraking_mass_penalty != self.global_vars['aerobraking_mass_penalty']
 
-            if any([nodes_changed, trajectory_data_changed, aerobraking_changed]):
+            if any([nodes_changed, trajectory_data_changed]):
 
                 self.graph = Graph(dict_of_dicts)
                 self.graph.vehicles = self.vehicles
@@ -549,6 +555,8 @@ class Price_Sim:
 
             self.graph.subgraphs = self.graph.best_fuel_flow_subgraphs(graph=self.graph.g_main, sources=self.graph.g_main.nodes.keys(), fuel_sources=self.global_vars["fuel_sources"])
 
+    
+    
 
 class Sim_Iteration(Price_Sim):
     """ A class containing all of the data and methods for the current Monte Carlo sampling iteration in the simulation.

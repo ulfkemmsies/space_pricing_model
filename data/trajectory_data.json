@@ -5,7 +5,8 @@
         "EML2": {"dV": 3.43, "directionality":1, "vehicle": "Space Tug"},
         "EML1": {"dV": 3.77, "directionality":1, "vehicle": "Space Tug"},
         "EML4/5": {"dV": 3.99, "directionality":1, "vehicle": "Space Tug"},
-        "GEO": {"dV": 3.9, "directionality":1, "vehicle": "Space Tug"}
+        "GEO": {"dV": 3.9, "directionality":1, "vehicle": "Space Tug"},
+        "NEOs": {"dV": 3.3, "directionality":1, "vehicle": "Space Tug"}
         },
     "EML1":{
         "Moon": {"dV": 2.52, "directionality":1, "vehicle": "Lunar Lander"},
@@ -57,7 +58,6 @@
         "LEO": {"dV": 1.63, "directionality":1, "vehicle": "Aerobraker"}
         },
     "NEOs":{
-        "EML2": {"dV": 0.2, "directionality":1, "vehicle": "Space Tug"},
-        "LEO": {"dV": 3.3, "directionality":1, "vehicle": "Aerobraker"}
+        "EML2": {"dV": 0.2, "directionality":1, "vehicle": "Space Tug"}
     }
 }

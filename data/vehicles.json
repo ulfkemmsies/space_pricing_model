@@ -1,5 +1,6 @@
 {
     "Space Tug":{
+        "name": "Space Tug",
         "gross_sens": 0.03, 
         "prop_sens": 0.01, 
         "Isp":465,
@@ -7,6 +8,7 @@
     },
 
     "Lunar Lander":{
+        "name": "Lunar Lander",
         "gross_sens": 0.03, 
         "prop_sens": 0.01, 
         "Isp":465,
@@ -14,6 +16,7 @@
     },
 
     "Aerobraker":{
+        "name": "Aerobraker",
         "gross_sens": 0.03, 
         "prop_sens": 0.01, 
         "Isp":465,
@@ -21,6 +24,7 @@
     },
 
     "Lunar Aerobraker":{
+        "name": "Lunar Aerobraker",
         "gross_sens": 0.03, 
         "prop_sens": 0.01, 
         "Isp":465,
