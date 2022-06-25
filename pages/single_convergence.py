@@ -1,3 +1,4 @@
+from email.policy import default
 from bleach import clean
 from requests import options
 import streamlit as st
@@ -19,6 +20,8 @@ from SessionState import *
 
 
 def app():
+
+    state = get_state()
 
     #Create the all-encompassing simulation object
     st.session_state.sim = Price_Sim()
@@ -62,7 +65,7 @@ def app():
     # Calculate the LEO price calculated from Earth launch instead of user-selected one
     if LEO_calc:
         local_fuel_prices["LEO"] = st.session_state.sim.global_vars['earth_to_LEO_cost'] * st.session_state.sim.global_vars['local_fuel_prices']['Earth']
-    
+
     #Be sure to update the local fuel prices from our input
     st.session_state.sim.global_vars.update({"local_fuel_prices": local_fuel_prices})
 
@@ -77,11 +80,54 @@ def app():
 
         if len(source_graph_to_vis) != 0: #only attempt to draw graph once something is selected
 
+            st.session_state.sim.global_vars['draw_best_path'] = st.checkbox("Draw best path between two nodes?")
+
             if set(source_graph_to_vis) == set(st.session_state.sim.graph.subgraphs.keys()):
                 #if all fuel sources selected, merge them and copy their graphs into Pyvis for visualization
                 st.session_state.sim.graph.merged_graph = st.session_state.sim.graph.merge_subgraphs(st.session_state.sim.graph.subgraphs)
+
+                if st.session_state.sim.global_vars['draw_best_path']:
+
+                    best_path_fuel_source = st.selectbox("Fuel Source for best path?", options=source_graph_to_vis)
+                    best_path_subgraph = st.session_state.sim.graph.subgraphs[best_path_fuel_source]
+
+                    non_terminal_nodes = [node for node in best_path_subgraph.nodes.keys() if len(list(nx.descendants(best_path_subgraph, node))) != 0]
+                    
+                    col3, col4 = st.columns(2)
+                    st.session_state.sim.global_vars['best_path_source_node'] = col3.selectbox("Source node", options=non_terminal_nodes)
+                    st.session_state.sim.global_vars['best_path_target_node'] = col4.selectbox("Target node", options= list(nx.descendants(best_path_subgraph, st.session_state.sim.global_vars['best_path_source_node'])))
+
+                    graph_to_draw = st.session_state.sim.graph.draw_best_path(
+                        graph_in = best_path_subgraph,
+                        source = st.session_state.sim.global_vars['best_path_source_node'],
+                        target = st.session_state.sim.global_vars['best_path_target_node'],
+                        graph_out = st.session_state.sim.graph.merged_graph,
+                        is_already_flow_subgraph=True)
+
+                    st.session_state.sim.graph.merged_graph = graph_to_draw
+
                 space_net = st.session_state.sim.graph.graph_to_pyvis(st.session_state.sim.graph.merged_graph, merged=True)
             else: #Just copy a single graph into Pyvis (stylishly)
+
+                if st.session_state.sim.global_vars['draw_best_path']:
+                    
+                    graph_to_draw = st.session_state.sim.graph.subgraphs[source_graph_to_vis[0]]
+
+                    non_terminal_nodes = [node for node in graph_to_draw.nodes.keys() if len(list(nx.descendants(graph_to_draw, node))) != 0]
+                    
+                    col3, col4 = st.columns(2)
+                    st.session_state.sim.global_vars['best_path_source_node'] = col3.selectbox("Source node", options=non_terminal_nodes)
+                    st.session_state.sim.global_vars['best_path_target_node'] = col4.selectbox("Target node", options= list(nx.descendants(graph_to_draw, st.session_state.sim.global_vars['best_path_source_node'])))
+
+                    graph_to_draw = st.session_state.sim.graph.draw_best_path(
+                        graph_in = graph_to_draw,
+                        source = st.session_state.sim.global_vars['best_path_source_node'],
+                        target = st.session_state.sim.global_vars['best_path_target_node'],
+                        graph_out = graph_to_draw,
+                        is_already_flow_subgraph=True)
+
+                    st.session_state.sim.graph.subgraphs[source_graph_to_vis[0]] = graph_to_draw
+
                 space_net = st.session_state.sim.graph.graph_to_pyvis(st.session_state.sim.graph.subgraphs[source_graph_to_vis[0]])
             
             space_net.set_edge_smooth('dynamic')
@@ -106,6 +152,9 @@ def app():
 
             # Load HTML into HTML component for display on Streamlit
             components.html(HtmlFile.read(), width=1500, height=800)
+
+        state = get_state()
+        state.sync()
 
     draw_graph()
 

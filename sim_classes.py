@@ -129,36 +129,66 @@ class Graph:
         
         return subgraphs       
             
-    def find_best_path(self, graph, source, target, fuel_source=None):
+    def find_best_path(self, graph, source, target, fuel_source=None, is_already_flow_subgraph = False):
         total_Ks = []
         
-        if fuel_source == None:
-            subg = self.fuel_flow_path(graph, source)
-        else:
-            subg = self.fuel_flow_path(graph, fuel_source)
-        
-        if (source, target) in subg.edges:
-            pass
-        else:
-            raise ValueError("Flow in wrong direction!")
+        if is_already_flow_subgraph == False:
+            if fuel_source == None:
+                subg = self.fuel_flow_path(graph, source)
+            else:
+                subg = self.fuel_flow_path(graph, fuel_source)
             
-        edges_to_delete = [edge[:2] for edge in graph.edges] - subg.edges
+            if (source, target) in subg.edges:
+                pass
+            else:
+                raise ValueError("Flow in wrong direction!")
+                
+            edges_to_delete = [edge[:2] for edge in graph.edges] - subg.edges
 
-        source_flow_graph = graph.copy()
-        source_flow_graph.remove_edges_from(edges_to_delete)
-        
+            source_flow_graph = graph.copy()
+            source_flow_graph.remove_edges_from(edges_to_delete)
+        else:
+            source_flow_graph = graph.copy()
+
         for path in nx.all_simple_paths(source_flow_graph, source, target):
-            total_mass = reduce(mul, ((graph[start][end][0]['prop_pay']+1) for start, end in zip(path[:-1], path[1:])), 1)
+            if  is_already_flow_subgraph == False:
+                total_mass = reduce(mul, ((graph[start][end][0]['prop_pay']+1) for start, end in zip(path[:-1], path[1:])), 1)
+
+            else:
+                total_mass = reduce(mul, ((graph[start][end]['prop_pay']+1) for start, end in zip(path[:-1], path[1:])), 1)
 
             for start, end in zip(path[:-1], path[1:]):
                 total_Ks.append([path, total_mass])
 
             paths_and_Ks = np.array(total_Ks)
             best_path = paths_and_Ks[paths_and_Ks[:,1].argmin()]
+
             total_Ks = []
 
             return list(best_path)
-    
+
+    def draw_best_path(self, graph_in, source, target, graph_out=None, color=None, is_already_flow_subgraph=False):
+        
+        if graph_out == None:
+            graph_out = graph_in
+
+        if color == None:
+            color = "#BF0000"
+
+        best_path = self.find_best_path(graph_in, source, target, is_already_flow_subgraph=is_already_flow_subgraph)[0]
+        best_path_edges = []
+
+        for i in range(len(best_path)-1):
+            new_edge = (best_path[i], best_path[i+1])
+            best_path_edges.append(new_edge)
+
+        for u, v, data in graph_out.edges(data=True):
+            for edge in best_path_edges:
+                if (u, v) == edge:
+                    data['color'] = color
+
+        return graph_out
+
     def fuel_flow_path(self, graph, source):
         subg = nx.DiGraph(graph.copy())
         
@@ -377,11 +407,21 @@ class Graph:
 
                 full_label = f"dV:{round(attrs['dV'], 2)}\n"+"k: "+str(round(attrs['prop_pay'], 2))
 
-                net.add_edge(edge_item[0], edge_item[1],
+                if "color" in attrs.keys():
+
+                    net.add_edge(edge_item[0], edge_item[1],
                     title = json.dumps(attrs),
                     label = str(full_label),
-                    value = attrs['prop_pay']*10
-                )
+                    value = attrs['prop_pay']*10,
+                    color = attrs['color']
+                    )
+                
+                else:
+                    net.add_edge(edge_item[0], edge_item[1],
+                        title = json.dumps(attrs),
+                        label = str(full_label),
+                        value = attrs['prop_pay']*10
+                    )
 
         elif merged:
 
