@@ -31,46 +31,104 @@ class Graph:
 
         self.aerobraking_mass_penalty = None
         self.global_vars = None
-    
+
+# ---------------------------------------------------------
+
     def update_nodes(self, graph, nodes):
         nodes_to_delete = [node for node in graph.nodes.keys() if node not in nodes]
         graph.remove_nodes_from(nodes_to_delete)
 
-    def assign_prop_pay(self, graph):
+    def system_state_to_dict(self, subgraphs, year):
+        
+        fuel_sources = list(subgraphs.keys())
+        nodes = subgraphs[fuel_sources[0]].nodes.keys()
+
+        out_dict = dict()
+        out_dict['year'] = year
+        for fuel_source in fuel_sources:
+            for node in nodes:
+                if node != fuel_source:
+                    out_dict[f"{node}_{fuel_source}"] = subgraphs[fuel_source].nodes[node]["fuel_price"]
+                else:
+                    out_dict[f"{node}_local"] = subgraphs[fuel_source].nodes[node]["fuel_price"]
+
+        return out_dict
+
+# ---------------------------------------------------------
+
+    def assign_mass_fractions(self, graph):
         for edge in graph.edges.items():
+
             attrs = edge[1]
             edge_item = edge[0]
             
             vehicle = self.vehicles[attrs['vehicle']]
-            self.prop_sens= vehicle["prop_sens"]
-            self.gross_sens = vehicle["gross_sens"]
-            self.Isp = vehicle["Isp"]
-            self.aerobraking = vehicle["aerobraking"]
+            gross_sens, prop_sens = self.calc_mass_sens_terms(attrs['vehicle'])
             
-            self.directionality = attrs["directionality"]
-            self.dV = attrs["dV"]
+            Isp = vehicle["engine"]["Isp"]
+            aerobraking = vehicle["aerobraking"]
+            
+            directionality = attrs["directionality"]
+            dV = attrs["dV"]
 
-            mass_frac = m.exp((1000*self.dV)/(9.807*self.Isp))
+            mass_frac = m.exp((1000*dV)/(9.807*Isp))
             
-            prop_pay = self.calc_prop_pay(self.prop_sens, self.gross_sens, mass_frac, self.directionality, self.aerobraking)
-            
-            attr_dict = {edge_item: {"prop_pay": prop_pay}}
+            Minit_Mpay = self.calc_Minit_Mpay(prop_sens, gross_sens, mass_frac, directionality, aerobraking)
+            Mprop_Mpay = self.calc_Mprop_Mpay(prop_sens, gross_sens, mass_frac, directionality, aerobraking)
+            Mdry_Mpay = self.calc_Mdry_Mpay(prop_sens, gross_sens, mass_frac, directionality, aerobraking)
+
+            attr_dict = {edge_item: {"Mprop_Mpay": Mprop_Mpay, "Minit_Mpay": Minit_Mpay, "Mdry_Mpay": Mdry_Mpay}}
 
             nx.set_edge_attributes(graph, attr_dict)
         
-    def calc_prop_pay(self, prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking):
+    def calc_Mprop_Mpay(self, prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking):
 
-        if direct == 1:
-            if aerobraking == True:
-                return (1- 1/mass_frac_term) * (1/(1/mass_frac_term)) * (1- (gross_sens_term + prop_sens_term)*mass_frac_term + prop_sens_term)  * self.global_vars["aerobraking_mass_penalty"]
-            else:
-                return (1- 1/mass_frac_term) * (1/(1/mass_frac_term)) * (1- (gross_sens_term + prop_sens_term)*mass_frac_term + prop_sens_term)
+        Minit_Mpay = self.calc_Minit_Mpay(prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking)
 
-        elif direct == 2:
-            if aerobraking == True:
-                return ((1- (1/mass_frac_term**2)) * (1/(mass_frac_term * (1 - prop_sens_term*(mass_frac_term - 1)))) * (1 - (prop_sens_term + gross_sens_term)*mass_frac_term**2 + prop_sens_term) * self.global_vars["aerobraking_mass_penalty"] ) - (1- (1/mass_frac_term))
-            else:
-                return ((1- (1/mass_frac_term**2)) * (1/(mass_frac_term * (1 - prop_sens_term*(mass_frac_term - 1)))) * (1 - (prop_sens_term + gross_sens_term)*mass_frac_term**2 + prop_sens_term) ) - (1- (1/mass_frac_term))
+        if aerobraking == False: aerocheck = self.global_vars["aerobraking_mass_penalty"]
+        else: aerocheck = 1
+
+        if direct == 1: mass_frac_term_2 = 1
+        elif direct == 2: mass_frac_term_2 = mass_frac_term
+
+        return (Minit_Mpay * (1 - 1/(mass_frac_term * mass_frac_term_2))) - (1 - 1/mass_frac_term_2)
+
+    def calc_Minit_Mpay(self, prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking):
+
+        if aerobraking == False: aerocheck = self.global_vars["aerobraking_mass_penalty"]
+        else: aerocheck = 1
+
+        if direct == 1: mass_frac_term_2 = 1
+        elif direct == 2: mass_frac_term_2 = mass_frac_term
+
+        return mass_frac_term * (1 - prop_sens_term*(mass_frac_term_2 - 1)) * 1/(1 - (prop_sens_term + gross_sens_term)*mass_frac_term * mass_frac_term_2 + prop_sens_term) * (self.global_vars["aerobraking_mass_penalty"]/aerocheck)
+
+    def calc_Mdry_Mpay(self, prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking):
+
+        Minit_Mpay = self.calc_Minit_Mpay(prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking)
+        Mprop_Mpay = self.calc_Mprop_Mpay(prop_sens_term, gross_sens_term, mass_frac_term, direct, aerobraking)
+
+        return gross_sens_term * Minit_Mpay + prop_sens_term * Mprop_Mpay
+
+    def calc_mass_sens_terms(self, vehicle_name:str):
+
+        vehicle_data = self.vehicles[vehicle_name]
+        engine_data = self.engines[vehicle_data["engine"]]
+        propellant_data = self.propellants[engine_data['propellant']]
+
+        prop_sens = (engine_data['MXR'] * (propellant_data['f_oxtank'] / propellant_data['oxidizer_density'] + \
+            (propellant_data['f_fueltank'] / propellant_data['fuel_density']))) / ( (1+ engine_data['MXR']) * (1 - propellant_data['f_ullage']) )  ])
+
+        if T2W not in vehicle_data.keys():
+            T2W = self.global_vars['T2W_default']
+
+        T2W_eng = (engine_data['thrust_vac']*1000)/ (engine_data['dry_mass'] * self.global_vars['g0'])
+        
+        gross_sens = (T2W * (1 + engine_data['f_TSW'] * T2W)) / T2W_eng
+
+        return gross_sens, prop_sens
+
+# ---------------------------------------------------------
 
     def best_fuel_flow_subgraphs(self, graph, sources, fuel_sources=None):
         
@@ -152,10 +210,10 @@ class Graph:
 
         for path in nx.all_simple_paths(source_flow_graph, source, target):
             if  is_already_flow_subgraph == False:
-                total_mass = reduce(mul, ((graph[start][end][0]['prop_pay']+1) for start, end in zip(path[:-1], path[1:])), 1)
+                total_mass = reduce(mul, ((graph[start][end][0]['Mprop_Mpay']+1) for start, end in zip(path[:-1], path[1:])), 1)
 
             else:
-                total_mass = reduce(mul, ((graph[start][end]['prop_pay']+1) for start, end in zip(path[:-1], path[1:])), 1)
+                total_mass = reduce(mul, ((graph[start][end]['Mprop_Mpay']+1) for start, end in zip(path[:-1], path[1:])), 1)
 
             for start, end in zip(path[:-1], path[1:]):
                 total_Ks.append([path, total_mass])
@@ -196,7 +254,7 @@ class Graph:
         targets.remove(source)
         
         for edge in subg.out_edges(source):
-            dist = graph[source][edge[1]][0]['prop_pay']+1
+            dist = graph[source][edge[1]][0]['Mprop_Mpay']+1
             nx.set_node_attributes(subg, {edge[1]: dist}, name=f"dist_from_{source}")
         
         subg.clear_edges()
@@ -215,7 +273,45 @@ class Graph:
                     subg.add_edge(target, subtarget)
             
         return subg
+
+# ---------------------------------------------------------
+
+    def calc_price_increase(self, edge, orig_node):
+
+        #Get information from linked dicts
+        vehicle_data = self.vehicles[edge['vehicle']]
+        engine_data = self.engines[vehicle_data["engine"]]
         
+        #Get engine parameters
+        v_e = engine_data['Isp'] * self.global_vars['g0']
+        thrust_vac = engine_data['thrust_vac']
+        if "burn_lifetime" not in engine_data.keys():
+            burn_lifetime = self.global_vars['burn_lifetime_default']
+        
+        #Get vehicle parameters
+        initial_cost = vehicle_data['initial_cost']
+        repair_factor_fixed = vehicle_data["repair_factor_fixed"]
+        repair_factor_var = vehicle_data["repair_factor_var"]
+
+        #Get node parameters
+        if "best_price" not in orig_node.keys(): best_price = orig_node['fuel_price']
+        else: best_price = orig_node['best_price']
+        fuel_price = orig_node['fuel_price']
+
+        #Get edge parameters
+        dV = edge['dV']
+        profit_margin = edge['profit_margin']
+        Minit_Mpay = edge["Minit_Mpay"]
+        Mprop_Mpay = edge["Mprop_Mpay"]
+        Mdry_Mpay = edge["Mdry_Mpay"]
+
+        #Calculate total new price
+        Ctot_Mpay = initial_cost * ((v_e * (1 - m.exp(-(dV*1000)/v_e)) /(thrust_vac * burn_lifetime))* Minit_Mpay +\
+            (repair_factor_fixed * (1 + repair_factor_var * dV * 1000) * Mdry_Mpay)) + best_price * Mprop_Mpay
+        new_price = profit_margin * (fuel_price + Ctot_Mpay)
+
+        return new_price
+
     def set_initial_price_conditions(self, subgraphs, local_fuel_prices):
         
         for fuel_source in subgraphs.keys():
@@ -232,7 +328,7 @@ class Graph:
 
                 for child in children.keys():
                     edge = children[child]                    
-                    new_price = current_node["fuel_price"] * (edge["prop_pay"] + 1)
+                    new_price = self.calc_price_increase(edge, current_node)
                     
                     if child in new_prices.keys():
                         if new_price < new_prices[child]:
@@ -273,7 +369,7 @@ class Graph:
                 for child in children.keys():
 
                     edge = children[child]                    
-                    new_price = current_node["best_price"] * edge["prop_pay"] + current_node["fuel_price"]
+                    new_price = self.calc_price_increase(edge, current_node)
 
                     if child in new_prices.keys():
                         if new_price < new_prices[child]:
@@ -338,7 +434,7 @@ class Graph:
                         for child in children.keys():
 
                             edge = children[child]                    
-                            new_price = current_node["best_price"] * edge["prop_pay"] + current_node["fuel_price"]
+                            new_price = current_node["best_price"] * edge["Mprop_Mpay"] + current_node["fuel_price"]
 
                             if child in new_prices.keys():
                                 if new_price < new_prices[child]:
@@ -359,21 +455,7 @@ class Graph:
                 changing = any(changing)
                 return changing
             
-    def system_state_to_dict(self, subgraphs, year):
-        
-        fuel_sources = list(subgraphs.keys())
-        nodes = subgraphs[fuel_sources[0]].nodes.keys()
-
-        out_dict = dict()
-        out_dict['year'] = year
-        for fuel_source in fuel_sources:
-            for node in nodes:
-                if node != fuel_source:
-                    out_dict[f"{node}_{fuel_source}"] = subgraphs[fuel_source].nodes[node]["fuel_price"]
-                else:
-                    out_dict[f"{node}_local"] = subgraphs[fuel_source].nodes[node]["fuel_price"]
-
-        return out_dict
+# ---------------------------------------------------------
 
     def graph_to_pyvis(self, graph, net=None, group=None, merged=None):
         
@@ -405,14 +487,14 @@ class Graph:
                 attrs = edge[1]
                 edge_item = edge[0]
 
-                full_label = f"dV:{round(attrs['dV'], 2)}\n"+"k: "+str(round(attrs['prop_pay'], 2))
+                full_label = f"dV:{round(attrs['dV'], 2)}\n"+"k: "+str(round(attrs['Mprop_Mpay'], 2))
 
                 if "color" in attrs.keys():
 
                     net.add_edge(edge_item[0], edge_item[1],
                     title = json.dumps(attrs),
                     label = str(full_label),
-                    value = attrs['prop_pay']*10,
+                    value = attrs['Mprop_Mpay']*10,
                     color = attrs['color']
                     )
                 
@@ -420,7 +502,7 @@ class Graph:
                     net.add_edge(edge_item[0], edge_item[1],
                         title = json.dumps(attrs),
                         label = str(full_label),
-                        value = attrs['prop_pay']*10
+                        value = attrs['Mprop_Mpay']*10
                     )
 
         elif merged:
@@ -445,7 +527,7 @@ class Graph:
                 edge_item = edge[0]
 
                 full_label = f"dV:{round(attrs['dV'], 2)}km/s\n"+"k: "+\
-                    str(round(attrs['prop_pay'], 2))
+                    str(round(attrs['Mprop_Mpay'], 2))
 
                 for attr in attrs.keys():
                     if type(attrs[attr]) == float:
@@ -454,7 +536,7 @@ class Graph:
                 net.add_edge(edge_item[0], edge_item[1],
                     title = attr_dict_to_str(attrs),
                     label = str(full_label),
-                    width = attrs['prop_pay']*5,
+                    width = attrs['Mprop_Mpay']*5,
                     color = attrs['color'],
                     arrowStrikethrough = False
                 )
@@ -576,7 +658,7 @@ class Price_Sim:
                 
                 self.graph.update_nodes(self.graph.g_main, self.global_vars["active_nodes"])
 
-                self.graph.assign_prop_pay(self.graph.g_main)
+                self.graph.assign_mass_fractions(self.graph.g_main)
 
                 self.graph.subgraphs = self.graph.best_fuel_flow_subgraphs(graph=self.graph.g_main, sources=self.graph.g_main.nodes.keys(), fuel_sources=self.global_vars["fuel_sources"])
         
@@ -586,12 +668,14 @@ class Price_Sim:
         elif old_graph == None:
             self.graph = Graph(dict_of_dicts)
             
+            self.graph.propellants = self.propellants
+            self.graph.engines = self.engines
             self.graph.vehicles = self.vehicles
             self.graph.global_vars = self.global_vars
             
             self.graph.update_nodes(self.graph.g_main, self.global_vars["active_nodes"])
             
-            self.graph.assign_prop_pay(self.graph.g_main)
+            self.graph.assign_mass_fractions(self.graph.g_main)
 
             self.graph.subgraphs = self.graph.best_fuel_flow_subgraphs(graph=self.graph.g_main, sources=self.graph.g_main.nodes.keys(), fuel_sources=self.global_vars["fuel_sources"])
 

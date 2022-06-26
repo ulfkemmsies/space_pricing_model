@@ -1,34 +1,38 @@
 {
     "Space Tug":{
         "name": "Space Tug",
-        "gross_sens": 0.03, 
-        "prop_sens": 0.01, 
-        "Isp":465,
-        "aerobraking": false
+        "engine": "RL10B-2",
+        "aerobraking": false,
+        "initial_cost": 1000000,
+        "repair_factor_fixed": 0.001,
+        "repair_factor_var": 0.00001
     },
 
     "Lunar Lander":{
         "name": "Lunar Lander",
-        "gross_sens": 0.03, 
-        "prop_sens": 0.01, 
-        "Isp":465,
-        "aerobraking": false
+        "engine": "RLRV_engine",
+        "aerobraking": false,
+        "initial_cost": 1000000,
+        "repair_factor_fixed": 0.001,
+        "repair_factor_var": 0.00001
     },
 
     "Aerobraker":{
         "name": "Aerobraker",
-        "gross_sens": 0.03, 
-        "prop_sens": 0.01, 
-        "Isp":465,
-        "aerobraking": true
+        "engine": "RL10B-2",
+        "aerobraking": true,
+        "initial_cost": 1000000,
+        "repair_factor_fixed": 0.001,
+        "repair_factor_var": 0.00001
     },
 
     "Lunar Aerobraker":{
         "name": "Lunar Aerobraker",
-        "gross_sens": 0.03, 
-        "prop_sens": 0.01, 
-        "Isp":465,
-        "aerobraking": true
+        "engine": "RLRV_engine",
+        "aerobraking": true,
+        "initial_cost": 1000000,
+        "repair_factor_fixed": 0.001,
+        "repair_factor_var": 0.00001
     }
 
 }

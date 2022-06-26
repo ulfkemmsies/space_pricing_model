@@ -16,7 +16,8 @@
         "Isp": 465.5,
         "dry_mass": 277,
         "MXR":5.88,
-        "f_TSW": 0.003
+        "f_TSW": 0.003,
+        "n_cyles": 15
     },
     
     "RL10C-1": {
@@ -27,5 +28,16 @@
         "dry_mass": 190,
         "MXR":5.88,
         "f_TSW": 0.003
+    },
+
+    "RLRV_engine": {
+        "name": "RLRV_engine",
+        "propellant": "Hydrolox",
+        "thrust_vac": 100,
+        "Isp": 452.5,
+        "dry_mass": 230,
+        "MXR": 6,
+        "f_TSW": 0.003,
+        "burn_lifetime": 3500
     }
 }

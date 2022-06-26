@@ -11,6 +11,21 @@ def load_dict_from_json(filename):
             data = json.load(json_file)
             return data
 
+def set_instance_attrs_from_dict(instance, dict, keys=None):
+
+    if keys != None:
+        for key in keys:
+            setattr(instance, key, dict[key])
+
+    elif keys == None:
+        for key in dict.keys():
+            setattr(instance, key, dict[key])
+
+def create_class_instances_from_dict(classname, dict):
+    out = []
+    pass
+
+
 def get_filepaths_from_dir(foldername):
         root = "."
         filepaths = []

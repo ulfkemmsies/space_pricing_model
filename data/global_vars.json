@@ -9,5 +9,8 @@
         "Moon":5000,
         "LEO":2000,
         "Earth": 1
-    }
+    },
+    "burn_lifetime_default": 2008.0321,
+    "T2W_default": 0.5
+
 }
