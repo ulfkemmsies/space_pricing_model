@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import os
 
+
 from configparser import NoOptionError
 from xmlrpc.client import Boolean
 from scipy import stats
@@ -63,9 +64,10 @@ class Graph:
             edge_item = edge[0]
             
             vehicle = self.vehicles[attrs['vehicle']]
+            engine = self.engines[vehicle["engine"]]
             gross_sens, prop_sens = self.calc_mass_sens_terms(attrs['vehicle'])
             
-            Isp = vehicle["engine"]["Isp"]
+            Isp = engine["Isp"]
             aerobraking = vehicle["aerobraking"]
             
             directionality = attrs["directionality"]
@@ -117,9 +119,9 @@ class Graph:
         propellant_data = self.propellants[engine_data['propellant']]
 
         prop_sens = (engine_data['MXR'] * (propellant_data['f_oxtank'] / propellant_data['oxidizer_density'] + \
-            (propellant_data['f_fueltank'] / propellant_data['fuel_density']))) / ( (1+ engine_data['MXR']) * (1 - propellant_data['f_ullage']) )  ])
+            (propellant_data['f_fueltank'] / propellant_data['fuel_density']))) / ( (1+ engine_data['MXR']) * (1 - propellant_data['f_ullage']) )
 
-        if T2W not in vehicle_data.keys():
+        if "T2W" not in vehicle_data.keys():
             T2W = self.global_vars['T2W_default']
 
         T2W_eng = (engine_data['thrust_vac']*1000)/ (engine_data['dry_mass'] * self.global_vars['g0'])
@@ -267,7 +269,6 @@ class Graph:
             subtargets.remove(target)
             
             target_dist = subg.nodes[target][f"dist_from_{source}"]
-
             for subtarget in subtargets:
                 if subg.nodes[subtarget][f"dist_from_{source}"] > target_dist:
                     subg.add_edge(target, subtarget)
@@ -287,6 +288,7 @@ class Graph:
         thrust_vac = engine_data['thrust_vac']
         if "burn_lifetime" not in engine_data.keys():
             burn_lifetime = self.global_vars['burn_lifetime_default']
+        else: burn_lifetime = engine_data['burn_lifetime']
         
         #Get vehicle parameters
         initial_cost = vehicle_data['initial_cost']
@@ -306,7 +308,7 @@ class Graph:
         Mdry_Mpay = edge["Mdry_Mpay"]
 
         #Calculate total new price
-        Ctot_Mpay = initial_cost * ((v_e * (1 - m.exp(-(dV*1000)/v_e)) /(thrust_vac * burn_lifetime))* Minit_Mpay +\
+        Ctot_Mpay = initial_cost * ((v_e * (1 - m.exp(-(dV*1000)/v_e)) /(1000*thrust_vac * burn_lifetime))* Minit_Mpay +\
             (repair_factor_fixed * (1 + repair_factor_var * dV * 1000) * Mdry_Mpay)) + best_price * Mprop_Mpay
         new_price = profit_margin * (fuel_price + Ctot_Mpay)
 
@@ -472,14 +474,14 @@ class Graph:
 
                     net.add_node(node,
                     label = node+"\n"+str(round(graph.nodes[node]['fuel_price']/1000,1))+" k$",
-                    title = json.dumps(graph.nodes[node]),
+                    title = attr_dict_to_str(graph.nodes[node]),
                     group = group,
-                    size = graph.nodes[node]['fuel_price']/500
+                    size = graph.nodes[node]['fuel_price']/250
                     )
                 
                 else:
                     net.add_node(node,
-                    title = json.dumps(graph.nodes[node]),
+                    title = attr_dict_to_str(graph.nodes[node]),
                     group = group
                 )
 
@@ -487,22 +489,27 @@ class Graph:
                 attrs = edge[1]
                 edge_item = edge[0]
 
-                full_label = f"dV:{round(attrs['dV'], 2)}\n"+"k: "+str(round(attrs['Mprop_Mpay'], 2))
+                for attr in attrs.keys():
+                    if type(attrs[attr]) == float:
+                        attrs[attr] = round(attrs[attr],2)
+
+                full_label = f"dV:{round(attrs['dV'], 2)}\n"+\
+                    "k: "+str(round(attrs['Mprop_Mpay'], 2))
 
                 if "color" in attrs.keys():
 
                     net.add_edge(edge_item[0], edge_item[1],
-                    title = json.dumps(attrs),
+                    title = attr_dict_to_str(attrs),
                     label = str(full_label),
-                    value = attrs['Mprop_Mpay']*10,
+                    value = attrs['Mprop_Mpay']*5,
                     color = attrs['color']
                     )
                 
                 else:
                     net.add_edge(edge_item[0], edge_item[1],
-                        title = json.dumps(attrs),
+                        title = attr_dict_to_str(attrs),
                         label = str(full_label),
-                        value = attrs['Mprop_Mpay']*10
+                        value = attrs['Mprop_Mpay']*5
                     )
 
         elif merged:
@@ -515,7 +522,8 @@ class Graph:
             for node in graph.nodes.keys():
 
                 net.add_node(node,
-                label = node+"\n"+str(f"{graph.nodes[node]['cheaper_source']}: ")+str(round(graph.nodes[node]['best_price']/1000,1))+" k$",
+                label = node+"\n"+str(f"{graph.nodes[node]['cheaper_source']}: ")+\
+                    str(round(graph.nodes[node]['best_price']/1000,1))+" k$",
                 title = attr_dict_to_str(graph.nodes[node]),
                 size = graph.nodes[node]['best_price']/250,
                 color = graph.nodes[node]['color'],
@@ -605,12 +613,15 @@ class Price_Sim:
             Args:"""
         
         self.update_attrs_from_disk()
+        self.trajectory_data = entire_table_folder_to_dict("edge_var_tables")
+        self.save_attribute_to_json("trajectory_data", "data")
 
-    def save_attribute_to_json(self, attribute):
+    def save_attribute_to_json(self, attribute, folder):
         if not type(getattr(self, attribute)) == dict:
             raise Exception("Saved attribute must be a dict!")
         dict_out = getattr(self, attribute)
-        with open(f"{attribute}.json", "w") as outfile:
+        path = get_subfolder_path(folder) + "/" + attribute
+        with open(f"{path}.json", "w") as outfile:
             json.dump(dict_out, outfile)
 
     def update_attr_from_json(self, attribute, filename):
@@ -653,6 +664,8 @@ class Price_Sim:
             if any([nodes_changed, trajectory_data_changed]):
 
                 self.graph = Graph(dict_of_dicts)
+                self.graph.propellants = self.propellants
+                self.graph.engines = self.engines
                 self.graph.vehicles = self.vehicles
                 self.graph.global_vars = self.global_vars
                 
