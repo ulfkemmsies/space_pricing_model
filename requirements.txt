@@ -113,7 +113,6 @@ semver==2.13.0
 Send2Trash==1.8.0
 setuptools==61.2.0
 simplejson==3.17.6
-sip==4.19.13
 six==1.16.0
 smmap==5.0.0
 soupsieve==2.3.1
