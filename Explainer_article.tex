@@ -1,0 +1,260 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{titlesec}
+
+\title{How to price space resources at cislunar locations}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+The commercial space industry, which has flourished in this last decade due to rocket reusability, satellite miniaturization, and wider data analysis capabilities, is slowly moving outward from Earth orbit to the greater cislunar space which envelops our home. A longstanding narrative is that of exploiting space resources to benefit our techno-industrial complex, eventually perhaps even substituting resources from our own biosphere in order to salvage it. In cislunar space (and a bit beyond), lunar and Near Earth Object (NEO) resources are the easiest to reach and the probable first targets for exploration. This process can be greatly cheapened by transport infrastructure at key locations, and conversely, the harvested construction materials can cheapen the construction of such infrastructure.
+
+A possible metric for the progress of cislunar development is the price of goods at any given location: comparing goods coming from different sources (NEOs, Moon, Earth) shows how efficient the overall system is for that specific trajectory and where more infrastructure is needed. In order to forecast these prices, orbital mechanics, vehicle parameters, and rocket equations must be taken into account. Unlike logistics on Earth, where shipping costs are a fraction of the final price paid, space transport is still so difficult and expensive that it remains the main cost driver.
+
+This article is the first step in an attempt to create \textbf{a framework, model, and software implementation to estimate how much space resources will cost at different orbital points of interest}. It will be written for both laypeople and industry members using expandable content for the underlying equation derivations and deeper detail. It will also accompany a \href{https://share.streamlit.io/ulfkemmsies/space_pricing_model/main}{simple app} that implements the theory. Many assumptions are being made herein, and since they will vary in their quality, this article is also an attempt to validate them through the feedback it will generate from knowledgeable readers.
+
+The main steps taken herein are as follows:
+\begin{itemize}
+    \item Define all background information, equations and terms
+    \item Define the main cost drivers for idealized space cargo transport
+    \item Introduce simplifications (mass ratios) that mitigate the need for vehicle specifications
+    \item Find an expression for price propagation between locations
+    \item Explain the model tying the theory together and its respective software
+    \item Discuss general conclusion, assumptions and further work
+\end{itemize}
+
+\section{Background Information at Various Levels}
+\subsection{Basic}
+\subsubsection{How Rockets Work}
+The main paradigm for space propulsion is chemical rockets: a fuel reacts chemically, is energized and accelerated, and propels the vehicle forward by flying out the back. The main fuel we will be considering is Hydrolox, or liquid hydrogen LH$_{2}$ and liquid oxygen LOx. This is because Hydrolox can be produced by electrolyzing (separating the hydrogen and oxygen) water, which exists in abundance on the Moon, making it the probable fuel used for cislunar transport systems.
+
+Travelling in space is done mainly by consecutively changing your speed and orbit around some gravitational body. The ideal maneuver between two orbits or bodies is a \textit{Hohmann Transfer} and requires several propellant burns, each changing the spacecraft's velocity by some $\Delta V$ [km/s]. The total $\Delta V$ for a trip between two locations also indicates how much energy (burned propellant) is required for transport.
+
+The \textit{Mass Fraction} $\eta$ of a single rocket maneuver is the ratio of the initial and final vehicle masses, i.e. after the required propellant has been burned.
+\begin{equation}
+\eta = \frac{m_{init}}{(m_{init} - m_{prop})}
+\end{equation}
+
+$\eta$ also relates $v_e$ and $\Delta V$:
+\begin{equation}
+\eta = e^{\Delta V / v_e}
+\end{equation}
+where $v_e$ is the fuel's \textit{Exhaust Velocity} (which depends on the propellant used and is often represented by the engine's \textit{Specific Impulse} $I_{sp} = v_e / g_0$). This means we can know $\eta$ solely from knowing our propellant-engine combination and the orbital trajectory being traversed.
+
+The \textit{Maneuver Burn Time} of a single propellant burn is described in the following equation:
+\begin{equation}
+t_{burn}=\frac{m_{init} \cdot v_e}{T_{eng}}\left(1-e^{-\frac{\Delta V}{v_e}}\right)
+\end{equation}
+where $T_{eng}$ is the engine's thrust. Since a mission often has several burns, the vehicle will be lighter at later burns due to the shed propellant mass.
+
+\subsubsection{Some Terms Used}
+The \textbf{dry mass} of a rocket is its mass without any propellant or payload: all the systems, engines, structures, tanks, and cables.
+
+\subsubsection{Locations in Cislunar Space}
+\begin{itemize}
+    \item Earth Surface
+    \item Low Earth Orbit
+    \item Earth Moon Lagrangian Points
+    \item Low Lunar Orbit
+    \item Lunar Surface
+\end{itemize}
+
+\section{Cost Drivers}
+When some cargo is shipped from A to B, transportation cost (as well as the profit margin) is the difference between the price paid before and after delivery. On Earth, shipping fees are a small fraction of the final price due to low propellant mass fractions $m_{prop}/m_{init}$ and extreme vehicle reusability. Ships and pickup trucks have a propellant mass fraction of 3\%, cars 4\%, cargo jets 40\%, and rockets around 85\% \cite{NASA}. Container ships can be used intensely for 10 to 12 years \cite{Containercorp} and commercial airplanes for 25 to 30 years \cite{Quora}, but even the most reused rocket, a SpaceX Falcon 9, has only flown a total of 10 times \cite{EclipseAviation} - the historical norm being just one expendable use. It is no wonder that space shipping makes up a large part of the final price of delivered payloads.
+
+\subsection{Components of Transportation Cost}
+\subsubsection{Reusability-Limited Cost}
+Recouping the initial investment in the vehicle. The more uses your vehicle has, the more this recouping can be spread out: 
+\begin{equation}
+C_{use} = \frac{C_{init}}{n_{cycles}}
+\end{equation}
+
+For rockets, the lifetime of the engine is often the limit for the rest of the vehicle. Liquid propellant rocket engines have a limited amount of cycles (or restarts) $n_{cycles}$ and a total burn lifetime $t_{life}$, according to \cite{source}:
+\begin{quote}
+[...] two major degradations limit the safe life operation of a rocket engine, the low-cycle fatigue damage related mainly to an engine start-up and shutdown operation, and the time-dependent damage driven by creep and material wear out related to the duration of the engine main stage operation.
+\end{quote}
+
+These two limits, $n_{cycles}$ and $t_{life}$, are related by:
+\begin{equation}
+n_{cycles} \cdot t_{burn, avg}= t_{life}
+\end{equation}
+
+In case only one or the other value is known, they can be transformed into the other. Since trajectories have several burns $n_{burns}$ each, the \textbf{reusability-limited cost per trajectory} will be:
+\begin{equation}
+C_{use} = C_{init} \cdot \frac{n_{burns}}{n_{cycles}}  = C_{init} \cdot \frac{t_{burn}}{t_{life}}
+\end{equation}
+
+\subsubsection{Maintenance Cost}
+Regular repair and maintenance. This cost has a fixed and variable part - one captures damage caused by simply using the vehicle, and the other depends on the conditions the vehicle must endure and the energetic distance of the journey:
+\begin{equation}
+C_{repair} = C_{repair, fixed} + C_{repair, var} \cdot \Delta V
+\end{equation}
+
+The final maintenance and repair cost is:
+\begin{equation}
+C_{repair} = C_{init} \cdot (f_{repair,fixed} \cdot m_{dry} \cdot (1 + f_{repair,var} \cdot \Delta V))
+\end{equation}
+
+\subsubsection{Propellant Cost}
+The cost of the fuel used:
+\begin{equation}
+C_{prop} = m_{prop} \cdot P_{prop}
+\end{equation}
+
+\subsection{Summary of Cost Equations}
+The three transportation costs are:
+\begin{itemize}
+    \item Reusability-limited cost:
+    \begin{equation}
+    C_{use} = C_{init} \cdot \frac{t_{burn}}{t_{life}}  \quad  \text{or} \quad C_{init} \cdot \frac{n_{burns}}{n_{cycles}}
+    \end{equation}
+    \item Repair and maintenance cost:
+    \begin{equation}
+    C_{repair} = C_{init} \cdot ((f_{repair, fixed} \cdot m_{dry} ) \cdot (1 + f_{repair, var} \cdot \Delta V ) )
+    \end{equation}
+    \item Propellant cost:
+    \begin{equation}
+    C_{prop} =P_{prop} \cdot m_{prop}
+    \end{equation}
+\end{itemize}
+
+The expression found for all modelled costs is:
+\begin{equation}
+C_{total} = C_{init} \cdot \left( \frac{t_{burn}}{t_{life}} + (f_{repair, fixed} \cdot m_{dry} ) \cdot (1 + f_{repair, var} \cdot \Delta V ) + P_{prop} \cdot m_{prop} \right)
+\end{equation}
+
+\section{Trajectory Performance Parameters}
+\subsection{Rocket Sizing 101}
+Spacecraft design often starts with a simple requirement: deliver a payload $m_{pay}$ from A to B. The chosen engine-propellant combo yields the Specific Impulse $I_{sp}$ and thus the Exhaust Velocity $v_e$. The orbital maneuvers required are found using the appropriate equations, yielding the $\Delta V$ for each burn.
+
+The calculation of the initial mass required for the entire vehicle $m_{init}$ is performed backwards. Starting at the $n^{th}$ burn:
+\begin{equation}
+\eta_n = \frac{m_{dry} \cdot m_{pay} \cdot m_{prop,n}}{m_{dry} \cdot m_{pay}} = e^{ \frac{\Delta V_n}{v_e} }
+\end{equation}
+
+\begin{equation}
+m_{prop, n} = (m_{dry} + m_{pay}) \cdot (\eta_n -1)
+\end{equation}
+
+And with the propellant mass required for the final burn found, the previous burn's propellant mass can also be calculated:
+\begin{equation}
+m_{prop, n-1} = (m_{dry} + m_{pay} + m_{prop, n}) \cdot (\eta_{n-1} -1)
+\end{equation}
+
+If the vehicle is staged and thus has different $m_{dry}$ at different times, this must also be taken into account. This process is repeated until $m_{init}$ is reached.
+
+\subsection{Finding the Mass Ratios}
+\subsubsection{Adapting Previous Works}
+If you haven't yet visited Selenian Boondocks, I highly recommend the blog - a \href{https://selenianboondocks.com/2022/04/pf-derivation-split-dv-2/}{recent article} by Kirk Sorensen saved me some work deriving the equations we're going to need. He considered the case of a vehicle that launches with a payload, drops it off somewhere, and continues on to another location (possibly the original starting point). I will spare you the derivation, which you can find in his article.
+
+In Sorensen's model, he defines the dry mass of the craft (no propellant or payload) as depending on three terms: initial-mass-sensitive ($\phi$), propellant-mass-sensitive ($\lambda$), and payload-mass-sensitive ($\epsilon$) mass terms. Typical values for in-space (vacuum) liquid hydrogen engines and propellant tanks are $\phi = 0.01$ and $\lambda = 0.03$.
+\begin{equation}
+m_{\text {dry }}=\phi \cdot m_{\text {initial }}+\lambda \cdot  m_{\text {prop }}+\epsilon \cdot m_{\text {payload }}
+\end{equation}
+
+Two further useful equations in his analysis are:
+\begin{equation}
+m_{init} = \eta_1 \cdot \eta_2 \cdot m_{dry} + \eta_1 \cdot m_{pay}
+\end{equation}
+
+\begin{equation}
+m_{prop} = m_{init} \cdot \left(1 - \frac{1}{\eta_1 \cdot \eta_2}\right) - m_{pay} \cdot \left(1- \frac{1}{\eta_2}\right)
+\end{equation}
+
+Using slick algebra, he arrives upon an expression relating the payload mass to the initial launch mass using only these constants:
+\begin{equation}
+\frac{m_{\text {init}}}{m_{\text {pay}}}=\frac{\eta_{1}\left(1+\epsilon \eta_{2}-\lambda\left(\eta_{2}-1\right)\right)}{1-(\phi+\lambda) \eta_{1} \eta_{2}+\lambda}
+\end{equation}
+
+Here the $\eta$'s are the mass fractions $m_{init}/m_{final}$ for each maneuver of the mission (the second being the return trip sans the payload mass).
+
+\subsection{Summary of Mass Ratio Equations}
+\subsubsection{Model Assumptions}
+The vehicle performs a maneuver $\eta_1$, drops off a payload $m_{pay}$, and performs a second maneuver $\eta_2$. The dry mass is composed of contributions by:
+\begin{equation}
+m_{\text {dry }}=\phi \cdot m_{\text {init }}+\lambda \cdot  m_{\text {prop }}+\epsilon \cdot m_{\text {pay }}
+\end{equation}
+
+\subsubsection{One-Way Missions}
+\begin{equation}
+\frac{m_{prop}}{m_{payload}} = \frac{1- (\phi +\lambda) \eta +\lambda}{\eta} \cdot \left(1- \frac{1}{\eta}\right)
+\end{equation}
+
+\begin{equation}
+\frac{m_{\text {init}}}{m_{\text {pay}}}=\frac{\eta_{1}}{1-(\phi+\lambda) \eta_{1} +\lambda}
+\end{equation}
+
+\begin{equation}
+\frac{m_{dry}}{m_{pay}} = \phi \cdot \frac{m_{init}}{m_{pay}}+\lambda \cdot  \frac{m_{prop}}{m_{pay}}
+\end{equation}
+
+\subsubsection{Two-Way Missions}
+\begin{equation}
+\frac{m_{\text {init}}}{m_{\text {pay}}}=\frac{\eta_{1}\left(1-\lambda\left(\eta_{2}-1\right)\right)}{1-(\phi+\lambda) \eta_{1} \eta_{2}+\lambda}
+\end{equation}
+
+\begin{equation}
+\frac{m_{prop}}{m_{payload}} = \frac{1-(\phi+\lambda) \eta_{1} \eta_{2}+\lambda}{\eta_{1}\left(1-\lambda\left(\eta_{2}-1\right)\right)} \cdot \left(1- \frac{1}{\eta_1 \eta_2}\right) - \left(1-\frac{1}{\eta_2}\right)
+\end{equation}
+
+\begin{equation}
+\frac{m_{dry}}{m_{pay}} = \phi \cdot \frac{m_{init}}{m_{pay}}+\lambda \cdot  \frac{m_{prop}}{m_{pay}}
+\end{equation}
+
+\section{Price Propagation}
+The price of a good can be said to "propagate" when the good is physically moved in space and resold at a different price. The new price depends only on the parameters of the trajectory and the initial price, and thus the cost of moving cargo through the logistical network "propagates" alongside the cargo itself. Ideally, the effect of each trajectory on the price of goods travelling through it should be calculated as easily as possible and with as little information as possible.
+
+If the target profit margin $f_{profit}$ for a trajectory from $A$ to $B$ is known beforehand, the required sale price $P_B$ can be found through:
+\begin{equation}
+P_{B} = f_{profit} \cdot \left(P_A + \frac{C_{total}}{m_{pay}}\right)
+\end{equation}
+
+Focusing on and expanding $C_{total}/m_{pay}$:
+\begin{equation}
+\frac{C_{total}}{m_{pay}} =C_{init} \cdot \left[ \frac{v_e}{T_{eng}} \cdot \frac{(1-e^{\frac{ - \Delta V}{v_e}})}{t_{life}} \cdot \frac{m_{init}}{m_{pay}} + (f_{repair, fixed} \cdot (1 + f_{repair, var} \cdot \Delta V ) ) \cdot \frac{m_{dry}}{m_{pay}} \right] + P_{prop} \cdot \frac{m_{prop}}{m_{pay}}
+\end{equation}
+
+Plugging $C_{total} / m_{pay}$ back into the equation for $P_B$ yields a long expression that can be calculated with knowledge about the trajectory travelled $(\Delta V, n_{burns}, f_{profit})$, the node being departed from $(P_{prop}, P_{pay})$, the vehicle used to do so $(C_{init}, f_{repair, fix/var})$, and the engine-propellant combination used by the vehicle $(T_{eng}, v_e, t_{life})$.
+
+\section{Software Implementation}
+This section will discuss how the theory above is actually transformed into a \href{https://share.streamlit.io/ulfkemmsies/space_pricing_model/main}{modular tool} for creating transport graphs. It is highly recommended that you open the link in this block and try the functions out yourself.
+
+The output of the model is a graph of \textbf{all the available refueling locations as nodes} with the \textbf{connecting edges} representing the \textbf{idealized travel between nodes} using a certain vehicle. Each edge (trajectory) incurs costs as described above and results in a higher payload price at the destination.
+
+\subsection{Layout Clarifications}
+The color of the arrows and nodes represents the propellant origin: blue is the Moon, green is the Earth. If there is only one color being shown (default is light blue), then only one fuel source's flow is being drawn. A node being a certain color indicates that the fuel from the corresponding source is cheaper there - this allows us to quickly visualize the dominance of a certain fuel source. The nodes and arrows can be hovered over for more complete information (all prices, mass ratios, etc.). The "$k$" value shown on the arrows corresponds to $m_{prop}/m_{pay}$ in the above equations. Thicker arrows have a higher $k$ (as well as $\Delta V$). The red arrow (sequence) is the best path from A to B in terms of propellant use. Calculating this in terms of total cost is in the pipeline.
+
+\section{Thoughts, Assumptions, and Further Work}
+\subsection{Thoughts and Use Cases}
+The idea behind being able to change the available variables quickly is to inspect the impact of certain changes on the entire system, e.g. how building fuel stations at $X$ location lowers system prices or improving $Y$ vehicle makes a certain path competitive. This impact is a potential metric for how worth it a specific improvement is as it relates to all of cislunar space's techno-industrial complex.
+
+The necessity of such a metric arose out of the author's frustration with the misalignment between profitable activities in space (cubesats: sensing, navigation, telecom) and progress toward the fulfillment of the larger potential of space. As the profitability of large-scale cislunar development rises, and resulting re-alignment between the profit motive and industrial space expansion occurs, differentiating between financial gains and space-dev gains will be crucial for all types of players: investors, engineers, and policymakers among them.
+
+\subsection{Assumptions}
+It cannot be overstressed that the quality of one's assumptions defines the quality of outputs, especially in this case, where there are so many assumptions to make. The modelled starting point for Earth-based fuel is LEO. There are two reasons for this:
+\begin{itemize}
+    \item The use of staging invalidates Sorensen's mass ratio equations and thus the simplified framework for estimating vehicle performance.
+    \item The best known number in the space industry is dollars per kg to LEO, and considering just how many guesstimates and assumptions are otherwise being made in this model, it is a good idea to anchor one in well-known values.
+\end{itemize}
+
+\subsection{Further Work}
+This model and app are nought but a starting point on a quest to model the economics of cislunar development. In no specific order, here is a bullet list of improvements and expansions to the theory and implementation that will bring us closer to reality and utility:
+\begin{itemize}
+    \item Realistically model the initial response to system changes (e.g. lunar lander making two-way trips to LLO until it becomes until one-way becomes possible through accumulated fuel)
+    \item Modeling real capacity of fuel and materials at nodes (they can be full)
+    \item Using different market shares of companies/vehicles to model percentage of all interactions happening like that (Markov Chains?)
+    \item Include Earth financial market behavior and how interest rates affect investment in cislunar infrastructure (by changing the discount rate and thus NPV)
+    \item Model how Earth launch prices affect the price of building nodes and ISRU over time
+    \item Assume structural percentage of total mass for orbital structures and find price of construction taking differently sourced materials into account
+    \item Add the possibility of non-chemical launch systems, other fuels, other propulsion mechanisms (electric)
+    \item Add real time passing for price convergence calculation? Or perhaps consider how financial instruments like futures can affect these price changes?
+    \item The ability to change and persist variables on the variables page
+\end{itemize}
+
+\end{document}
