@@ -189,43 +189,51 @@ class Graph:
         
         return subgraphs       
             
-    def find_best_path(self, graph, source, target, fuel_source=None, is_already_flow_subgraph = False):
-        total_Ks = []
+    def find_best_path(self, graph, source, target, fuel_source=None, is_already_flow_subgraph=False):
+        """Find the best path between source and target nodes."""
+        paths_with_masses = []
         
-        if is_already_flow_subgraph == False:
-            if fuel_source == None:
+        if not is_already_flow_subgraph:
+            if fuel_source is None:
                 subg = self.fuel_flow_path(graph, source)
             else:
                 subg = self.fuel_flow_path(graph, fuel_source)
             
-            if (source, target) in subg.edges:
-                pass
-            else:
+            if (source, target) not in subg.edges:
                 raise ValueError("Flow in wrong direction!")
                 
-            edges_to_delete = [edge[:2] for edge in graph.edges] - subg.edges
-
+            edges_to_delete = set([edge[:2] for edge in graph.edges]) - set(subg.edges)
             source_flow_graph = graph.copy()
             source_flow_graph.remove_edges_from(edges_to_delete)
         else:
             source_flow_graph = graph.copy()
 
+        # Calculate total mass for each path
         for path in nx.all_simple_paths(source_flow_graph, source, target):
-            if  is_already_flow_subgraph == False:
-                total_mass = reduce(mul, ((graph[start][end][0]['Mprop_Mpay']+1) for start, end in zip(path[:-1], path[1:])), 1)
-
-            else:
-                total_mass = reduce(mul, ((graph[start][end]['Mprop_Mpay']+1) for start, end in zip(path[:-1], path[1:])), 1)
-
-            for start, end in zip(path[:-1], path[1:]):
-                total_Ks.append([path, total_mass])
-
-            paths_and_Ks = np.array(total_Ks)
-            best_path = paths_and_Ks[paths_and_Ks[:,1].argmin()]
-
-            total_Ks = []
-
-            return list(best_path)
+            path_list = list(path)  # Convert path to list for consistent structure
+            try:
+                if not is_already_flow_subgraph:
+                    total_mass = reduce(mul, 
+                                      ((graph[start][end][0]['Mprop_Mpay'] + 1) 
+                                       for start, end in zip(path_list[:-1], path_list[1:])), 1)
+                else:
+                    total_mass = reduce(mul, 
+                                      ((graph[start][end]['Mprop_Mpay'] + 1) 
+                                       for start, end in zip(path_list[:-1], path_list[1:])), 1)
+                
+                # Ensure total_mass is a float
+                total_mass = float(total_mass)
+                paths_with_masses.append((path_list, total_mass))  # Ensure consistent types
+            except Exception as e:
+                print(f"Error calculating total mass for path: {path_list}, Error: {e}")
+                continue  # Skip this path if there's an error
+        
+        if not paths_with_masses:  # No paths found
+            return None
+        
+        # Find the path with minimum total mass
+        best_path = min(paths_with_masses, key=lambda x: x[1])
+        return list(best_path)  # Convert tuple to list for consistency with existing code
 
     def draw_best_path(self, graph_in, source, target, graph_out=None, color=None, is_already_flow_subgraph=False):
         
@@ -654,6 +662,9 @@ class Price_Sim:
                 setattr(self, var_name, {})
                 self.update_attr_from_json(var_name, subfolder_path +"/"+ var_name)
 
+        for attr, value in self.__dict__.items():
+            print(f"{attr}: {value}")
+    
     def graph_drawer(self, old_graph=None, dict_of_dicts=None):
 
         #notice changes in nodes, trajectory data (thus vehicles), aerobraking constant

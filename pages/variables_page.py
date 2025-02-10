@@ -1,7 +1,6 @@
 from sim_classes import *
 from general_funcs import *
 from general_funcs import *
-from SessionState import *
 import streamlit as st
 
 import matplotlib.pyplot as plt
@@ -46,6 +45,3 @@ def app():
     draw_editable_table(st.session_state.sim.current_edit_var)
 
     # st.button("Save changes to disk", on_click=)
-
-    state = get_state()
-    state.sync()

@@ -7,7 +7,7 @@ from pages import single_convergence, variables_page
 app = MultiPage()
 
 #Turn off pyplot warnings
-st.set_option('deprecation.showPyplotGlobalUse', False)
+# st.image(use_container_width=True)
 
 # Title of the main page
 st.title("Fuel Pricing at Cislunar Locations")

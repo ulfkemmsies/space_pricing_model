@@ -1,62 +1,106 @@
 <html>
-<head>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@latest/styles/vis-network.css" type="text/css" />
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vis-network@latest/dist/vis-network.min.js"> </script>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
 <center>
 <h1></h1>
 </center>
 
 <!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
 <script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
 
-<style type="text/css">
 
-        #mynetwork {
-            width: 900px;
-            height: 700px;
-            background-color: #222222;
-            border: 1px solid lightgray;
-            position: relative;
-            float: left;
-        }
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 900px;
+                 height: 700px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
 
         
-
         
 
-        
-</style>
+        <script type="text/javascript">
 
-</head>
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
 
-<body>
-<div id = "mynetwork"></div>
+              
 
+              
 
-<script type="text/javascript">
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
 
-    // initialize global variables.
-    var edges;
-    var nodes;
-    var network; 
-    var container;
-    var options, data;
+                  
 
-    
-    // This method is responsible for drawing the graph, returns the drawn network
-    function drawGraph() {
-        var container = document.getElementById('mynetwork');
-        
-        
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"font": {"color": "white"}, "group": null, "id": "Moon", "label": "Moon\n18.2 k$", "shape": "dot", "size": 72.85393232533829, "title": "{\"fuel_price\": 18213.483081334572\n \"best_price\": 5000}"}, {"font": {"color": "white"}, "group": null, "id": "LLO", "label": "LLO\n9.5 k$", "shape": "dot", "size": 38.05843753314177, "title": "{\"fuel_price\": 9514.609383285442\n \"best_price\": 9224.840535602743}"}, {"font": {"color": "white"}, "group": null, "id": "EML1", "label": "EML1\n8.8 k$", "shape": "dot", "size": 35.12220212688747, "title": "{\"fuel_price\": 8780.550531721869\n \"best_price\": 8780.550531721869}"}, {"font": {"color": "white"}, "group": null, "id": "LEO", "label": "LEO\n3.0 k$", "shape": "dot", "size": 12.0, "title": "{\"fuel_price\": 3000\n \"best_price\": 3000}"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "LLO", "label": "dV:1.87\nk: 0.57", "title": "{\"directionality\": 1.0\n \"dV\": 1.87\n \"profit_margin\": 1.1\n \"vehicle\": \"Lunar Lander\"\n \"Mprop_Mpay\": 0.57\n \"Minit_Mpay\": 1.66\n \"Mdry_Mpay\": 0.09}", "to": "Moon", "value": 2.8499999999999996}, {"arrows": "to", "from": "EML1", "label": "dV:0.64\nk: 0.16", "title": "{\"directionality\": 1.0\n \"dV\": 0.64\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 0.16\n \"Minit_Mpay\": 1.19\n \"Mdry_Mpay\": 0.03}", "to": "LLO", "value": 0.8}, {"arrows": "to", "from": "LEO", "label": "dV:4.04\nk: 1.78", "title": "{\"directionality\": 1.0\n \"dV\": 4.04\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 1.78\n \"Minit_Mpay\": 3.04\n \"Mdry_Mpay\": 0.25}", "to": "LLO", "value": 8.9}, {"arrows": "to", "from": "LEO", "label": "dV:3.77\nk: 1.57", "title": "{\"directionality\": 1.0\n \"dV\": 3.77\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 1.57\n \"Minit_Mpay\": 2.8\n \"Mdry_Mpay\": 0.22}", "to": "EML1", "value": 7.8500000000000005}]);
 
-        // parsing and collecting nodes and edges from the python
-        nodes = new vis.DataSet([{"font": {"color": "white"}, "group": null, "id": "Moon", "label": "Moon\n12.3 k$", "shape": "dot", "size": 49.36553730785722, "title": "{\"fuel_price\": 12341.384326964304\n \"best_price\": 5000}"}, {"font": {"color": "white"}, "group": null, "id": "LLO", "label": "LLO\n6.5 k$", "shape": "dot", "size": 25.8126208365578, "title": "{\"fuel_price\": 6453.155209139451\n \"best_price\": 6453.155209139451}"}, {"font": {"color": "white"}, "group": null, "id": "EML1", "label": "EML1\n6.0 k$", "shape": "dot", "size": 23.804415002605886, "title": "{\"fuel_price\": 5951.103750651471\n \"best_price\": 5951.103750651471}"}, {"font": {"color": "white"}, "group": null, "id": "LEO", "label": "LEO\n2.0 k$", "shape": "dot", "size": 8.0, "title": "{\"fuel_price\": 2000\n \"best_price\": 2000}"}]);
-        edges = new vis.DataSet([{"arrows": "to", "from": "LLO", "label": "dV:1.87\nk: 0.57", "title": "{\"directionality\": 1.0\n \"dV\": 1.87\n \"profit_margin\": 1.1\n \"vehicle\": \"Lunar Lander\"\n \"Mprop_Mpay\": 0.57\n \"Minit_Mpay\": 1.66\n \"Mdry_Mpay\": 0.09}", "to": "Moon", "value": 2.8499999999999996}, {"arrows": "to", "from": "EML1", "label": "dV:2.52\nk: 0.86", "title": "{\"directionality\": 1.0\n \"dV\": 2.52\n \"profit_margin\": 1.1\n \"vehicle\": \"Lunar Lander\"\n \"Mprop_Mpay\": 0.86\n \"Minit_Mpay\": 1.99\n \"Mdry_Mpay\": 0.13}", "to": "Moon", "value": 4.3}, {"arrows": "to", "from": "EML1", "label": "dV:0.64\nk: 0.16", "title": "{\"directionality\": 1.0\n \"dV\": 0.64\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 0.16\n \"Minit_Mpay\": 1.19\n \"Mdry_Mpay\": 0.03}", "to": "LLO", "value": 0.8}, {"arrows": "to", "from": "LEO", "label": "dV:5.9\nk: 4.48", "title": "{\"directionality\": 1.0\n \"dV\": 5.9\n \"profit_margin\": 1.1\n \"vehicle\": \"Lunar Lander\"\n \"Mprop_Mpay\": 4.48\n \"Minit_Mpay\": 6.09\n \"Mdry_Mpay\": 0.61}", "to": "Moon", "value": 22.400000000000002}, {"arrows": "to", "from": "LEO", "label": "dV:4.04\nk: 1.78", "title": "{\"directionality\": 1.0\n \"dV\": 4.04\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 1.78\n \"Minit_Mpay\": 3.04\n \"Mdry_Mpay\": 0.25}", "to": "LLO", "value": 8.9}, {"arrows": "to", "from": "LEO", "label": "dV:3.77\nk: 1.57", "title": "{\"directionality\": 1.0\n \"dV\": 3.77\n \"profit_margin\": 1.1\n \"vehicle\": \"Space Tug\"\n \"Mprop_Mpay\": 1.57\n \"Minit_Mpay\": 2.8\n \"Mdry_Mpay\": 0.22}", "to": "EML1", "value": 7.8500000000000005}]);
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
 
-        // adding nodes and edges to the graph
-        data = {nodes: nodes, edges: edges};
-
-        var options = {
+                  var options = {
     "configure": {
         "enabled": false
     },
@@ -94,24 +138,27 @@
         }
     }
 };
-        
-        
 
-        
-
-        network = new vis.Network(container, data, options);
-	 
-        
+                  
 
 
-        
+                  
 
-        return network;
+                  network = new vis.Network(container, data, options);
 
-    }
+                  
 
-    drawGraph();
+                  
 
-</script>
-</body>
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
 </html>

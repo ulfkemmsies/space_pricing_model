@@ -16,12 +16,11 @@ import time
 
 from sim_classes import *
 from general_funcs import *
-from SessionState import *
 
 
 def app():
 
-    state = get_state()
+    # state = st.session_state
 
     #Create the all-encompassing simulation object
     st.session_state.sim = Price_Sim()
@@ -151,12 +150,12 @@ def app():
                 HtmlFile = open(f'{path}/pyvis_graph.html','r',encoding='utf-8')
 
             # Load HTML into HTML component for display on Streamlit
-            components.html(HtmlFile.read(), width=1500, height=800)
+            components.html(HtmlFile.read(), width=899, height=695)
 
-        state = get_state()
-        state.sync()
+        # state = st.session_state
+        # state.sync()
 
     draw_graph()
 
-    state = get_state()
-    state.sync()
+    # state = st.session_state
+    # state.sync()
